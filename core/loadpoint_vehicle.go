@@ -123,6 +123,8 @@ func (lp *Loadpoint) selectVehicleByID(id string) api.Vehicle {
 func (lp *Loadpoint) setActiveVehicle(v api.Vehicle) {
 	lp.vmu.Lock()
 
+	prev := lp.vehicle
+
 	from := "unknown"
 	if lp.vehicle != nil {
 		lp.coordinator.Release(lp.vehicle)
@@ -146,7 +148,7 @@ func (lp *Loadpoint) setActiveVehicle(v api.Vehicle) {
 
 		// resolve optional config
 		if v.Capacity() > 0 && (lp.Soc.Estimate == nil || *lp.Soc.Estimate) {
-			lp.socEstimator = soc.NewEstimator(lp.log, lp.charger, v)
+			lp.socEstimator = soc.NewEstimator(lp.log, v)
 		}
 
 		lp.publish(keys.VehicleName, vehicle.Settings(lp.log, v).Name())
@@ -171,7 +173,15 @@ func (lp *Loadpoint) setActiveVehicle(v api.Vehicle) {
 
 	// re-publish vehicle settings
 	lp.publish(keys.PhasesActive, lp.ActivePhases())
-	lp.unpublishVehicle()
+
+	// only reset published vehicle data when the active vehicle actually changes.
+	// re-assigning the same default vehicle on reconnect must keep a known soc.
+	if prev != v {
+		lp.unpublishVehicle()
+
+		// vehicle change alters the loadpoint's optimizer profile
+		lp.triggerOptimizer()
+	}
 
 	// publish effective values
 	lp.PublishEffectiveValues()
@@ -217,6 +227,7 @@ func (lp *Loadpoint) unpublishVehicleIdentity() {
 // unpublishVehicle resets published vehicle data
 func (lp *Loadpoint) unpublishVehicle() {
 	lp.vehicleSoc = 0
+	lp.vehicleRange = 0
 
 	lp.publish(keys.VehicleClimaterActive, nil)
 	lp.publish(keys.VehicleSoc, 0.0)

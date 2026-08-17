@@ -80,7 +80,7 @@ import type {
 	Battery,
 	Meter,
 	CURRENCY,
-	Forecast,
+	UiForecast,
 	Notification,
 	ConfigStatus,
 	HemsConfig,
@@ -89,7 +89,9 @@ import type {
 	FatalError,
 	EvOpt,
 	BATTERY_MODE,
+	Vehicle,
 } from "@/types/evcc";
+import vehicleList from "@/utils/vehicleList";
 import store from "@/store";
 import type { Grid } from "./types";
 
@@ -130,7 +132,7 @@ export default defineComponent({
 		bufferSoc: Number,
 		bufferStartSoc: Number,
 		siteTitle: String,
-		vehicles: Object,
+		vehicles: Object as PropType<Record<string, Vehicle>>,
 		authProviders: { type: Object as PropType<AuthProviders>, default: () => ({}) },
 		currency: { type: String as PropType<CURRENCY> },
 		tariffFeedIn: Number,
@@ -145,7 +147,7 @@ export default defineComponent({
 		smartCostAvailable: Boolean,
 		smartFeedInPriorityAvailable: Boolean,
 		fatal: { type: Array as PropType<FatalError[]>, default: () => [] },
-		forecast: Object as PropType<Forecast>,
+		forecast: Object as PropType<UiForecast>,
 		hems: Object as PropType<ConfigStatus<HemsConfig, HemsStatus>>,
 		evopt: { type: Object as PropType<EvOpt> },
 	},
@@ -157,7 +159,7 @@ export default defineComponent({
 			return store.uiLoadpoints.value || [];
 		},
 		orderedVisibleLoadpoints() {
-			return this.loadpoints.filter((lp) => lp.visible);
+			return this.loadpoints.filter((lp) => lp.visible && !lp.disabled);
 		},
 		batterySoc() {
 			return this.battery?.soc;
@@ -178,8 +180,7 @@ export default defineComponent({
 			return this.collectProps(Energyflow);
 		},
 		vehicleList() {
-			const vehicles = this.vehicles || {};
-			return Object.entries(vehicles).map(([name, vehicle]) => ({ name, ...vehicle }));
+			return vehicleList(this.vehicles);
 		},
 		showParkingLot() {
 			// work in progess

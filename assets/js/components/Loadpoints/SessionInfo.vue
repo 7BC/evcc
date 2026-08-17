@@ -3,6 +3,8 @@
 		<LabelAndValue class="d-block" align="end">
 			<template #label>
 				<CustomSelect
+					inline
+					class="align-top"
 					:selected="selectedKey"
 					:options="selectOptions"
 					data-testid="sessionInfoSelect"
@@ -197,8 +199,10 @@ export default defineComponent({
 
 <style scoped>
 .sessionInfo * {
-	cursor: pointer;
 	user-select: none;
 	-webkit-user-select: none;
+}
+.sessionInfo .value {
+	cursor: pointer;
 }
 </style>
