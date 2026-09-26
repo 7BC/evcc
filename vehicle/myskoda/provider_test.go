@@ -110,3 +110,32 @@ func TestVehicleResponsePartErrors(t *testing.T) {
 	_, err = v.Odometer()
 	assert.ErrorIs(t, err, api.ErrNotAvailable)
 }
+
+func TestGetLimitSocPrefersSavedLocation(t *testing.T) {
+	global, home := 100, 80
+	res := VehicleResponse{Vehicle: Vehicle{
+		Charging: &Charging{
+			Status:   &ChargingStatus{},
+			Settings: &ChargingSettings{TargetStateOfChargeInPercent: &global},
+		},
+	}}
+	res.Vehicle.ChargingProfiles.CurrentVehiclePositionProfile = &struct{ TargetStateOfChargeInPercent *int }{&home}
+
+	v := &Provider{dataG: func() (VehicleResponse, error) { return res, nil }}
+
+	soc, err := v.GetLimitSoc()
+	require.NoError(t, err)
+	assert.EqualValues(t, home, soc)
+
+	// profile without limit: fall back to global limit
+	res.Vehicle.ChargingProfiles.CurrentVehiclePositionProfile = &struct{ TargetStateOfChargeInPercent *int }{}
+	soc, err = v.GetLimitSoc()
+	require.NoError(t, err)
+	assert.EqualValues(t, global, soc)
+
+	// not at saved location or profiles unsupported: profile is missing, fall back to global limit
+	res.Vehicle.ChargingProfiles.CurrentVehiclePositionProfile = nil
+	soc, err = v.GetLimitSoc()
+	require.NoError(t, err)
+	assert.EqualValues(t, global, soc)
+}
